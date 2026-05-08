@@ -227,8 +227,17 @@ html, body, [class*="css"] {
     content: "";
     position: absolute;
     width: 15px; height: 15px;
-    background: rgba(0,0,0,0.1);
+    background: rgba(0,0,0,0.15);
     border-radius: 50%;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Piece Assets */
+.piece-btn > button {
+    background-size: 85% !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
 }
 
 hr { border-color: var(--border); }
@@ -439,6 +448,22 @@ def init_state():
 
 init_state()
 
+# ─── Piece Assets ───────────────────────────────────────────────────────────
+PIECE_ASSETS = {
+    'P': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/wP.svg',
+    'N': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/wN.svg',
+    'B': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/wB.svg',
+    'R': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/wR.svg',
+    'Q': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/wQ.svg',
+    'K': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/wK.svg',
+    'p': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/bP.svg',
+    'n': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/bN.svg',
+    'b': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/bB.svg',
+    'r': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/bR.svg',
+    'q': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/bQ.svg',
+    'k': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/bK.svg',
+}
+
 def handle_square_click(square):
     board = st.session_state.board
     selected = st.session_state.selected_square
@@ -633,8 +658,7 @@ def render_interactive_board():
         for f in files:
             sq = chess.square(f, r)
             piece = board.piece_at(sq)
-            symbol = piece.unicode_symbol() if piece else ""
-
+            
             # Determine square color
             is_dark = (r + f) % 2 == 0
             btn_class = "dark-sq" if is_dark else "light-sq"
@@ -644,9 +668,24 @@ def render_interactive_board():
             elif sq in legal_destinations:
                 btn_class += " legal-sq"
 
+            # Piece styling
+            style = ""
+            if piece:
+                asset_url = PIECE_ASSETS.get(piece.symbol())
+                if asset_url:
+                    btn_class += " piece-btn"
+                    style = f"background-image: url('{asset_url}');"
+
             with cols[f if player_color == chess.WHITE else 7-f]:
-                st.markdown(f"<div class='square-btn {btn_class}'>", unsafe_allow_html=True)
-                if st.button(symbol, key=f"sq_{sq}", help=chess.SQUARE_NAMES[sq]):
+                st.markdown(f"""
+                    <div class='square-btn {btn_class}'>
+                    <style>
+                    div[data-testid="stColumn"]:nth-child({(f if player_color == chess.WHITE else 7-f) + 1}) button[key="sq_{sq}"] {{
+                        {style}
+                    }}
+                    </style>
+                """, unsafe_allow_html=True)
+                if st.button("", key=f"sq_{sq}", help=chess.SQUARE_NAMES[sq]):
                     handle_square_click(sq)
                     st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
