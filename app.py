@@ -629,7 +629,7 @@ def render_interactive_board():
     files = range(0, 8) if player_color == chess.WHITE else range(7, -1, -1)
 
     for r in ranks:
-        cols = st.columns(8, gap="none")
+        cols = st.columns(8)
         for f in files:
             sq = chess.square(f, r)
             piece = board.piece_at(sq)
