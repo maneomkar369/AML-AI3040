@@ -202,63 +202,6 @@ html, body, [class*="css"] {
     font-family: 'Playfair Display', serif;
 }
 
-/* Interactive Board */
-.square-btn > button {
-    border-radius: 0 !important;
-    height: 55px !important;
-    width: 100% !important;
-    padding: 0 !important;
-    font-size: 2.2rem !important;
-    border: none !important;
-    line-height: 55px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-.light-sq > button { background-color: #F0D9B5 !important; color: #333 !important; }
-.dark-sq > button { background-color: #B58863 !important; color: #333 !important; }
-.light-sq > button:hover { background-color: #E2C6A0 !important; }
-.dark-sq > button:hover { background-color: #A47854 !important; }
-
-.selected-sq > button { background-color: #CDD26A !important; border: 2px solid #D4AF37 !important; }
-.last-move-sq > button { background-color: rgba(205, 210, 106, 0.6) !important; }
-
-.legal-sq > button { position: relative; }
-.legal-sq > button::after {
-    content: "";
-    position: absolute;
-    width: 15px; height: 15px;
-    background: rgba(0,0,0,0.15);
-    border-radius: 50%;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-}
-
-/* Eval Bar */
-.eval-bar-container {
-    height: 12px;
-    width: 100%;
-    background: #444;
-    border-radius: 6px;
-    overflow: hidden;
-    margin: 10px 0;
-    display: flex;
-}
-.eval-white { background: #eee; height: 100%; transition: width 0.5s ease; }
-.eval-black { background: #111; height: 100%; transition: width 0.5s ease; }
-
-/* Captured pieces */
-.captured-box { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 5px; min-height: 25px; }
-.captured-piece { width: 20px; height: 20px; background-size: contain; background-repeat: no-repeat; opacity: 0.8; }
-
-/* Piece Assets */
-.piece-btn > button {
-    background-size: 85% !important;
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-}
-
 hr { border-color: var(--border); }
 
 /* Hide streamlit branding */
@@ -462,61 +405,8 @@ def init_state():
         st.session_state.losses = 0
     if "draws" not in st.session_state:
         st.session_state.draws = 0
-    if "selected_square" not in st.session_state:
-        st.session_state.selected_square = None
 
 init_state()
-
-# ─── Piece Assets ───────────────────────────────────────────────────────────
-PIECE_ASSETS = {
-    'P': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/wP.svg',
-    'N': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/wN.svg',
-    'B': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/wB.svg',
-    'R': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/wR.svg',
-    'Q': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/wQ.svg',
-    'K': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/wK.svg',
-    'p': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/bP.svg',
-    'n': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/bN.svg',
-    'b': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/bB.svg',
-    'r': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/bR.svg',
-    'q': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/bQ.svg',
-    'k': 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/bK.svg',
-}
-
-def handle_square_click(square):
-    board = st.session_state.board
-    selected = st.session_state.selected_square
-
-    if selected is None:
-        # First click: select a piece
-        piece = board.piece_at(square)
-        if piece and piece.color == st.session_state.player_color:
-            st.session_state.selected_square = square
-    elif selected == square:
-        # Click same square: deselect
-        st.session_state.selected_square = None
-    else:
-        # Second click: try to move
-        move = chess.Move(selected, square)
-        # Check for promotion
-        if board.piece_at(selected) and board.piece_at(selected).piece_type == chess.PAWN:
-            if (board.turn == chess.WHITE and chess.square_rank(square) == 7) or \
-               (board.turn == chess.BLACK and chess.square_rank(square) == 0):
-                move.promotion = chess.QUEEN
-
-        if move in board.legal_moves:
-            board.push(move)
-            st.session_state.last_move = move
-            st.session_state.move_history.append(move)
-            st.session_state.eval_score = evaluate_board(board)
-            st.session_state.selected_square = None
-        else:
-            # If clicked another of own pieces, select that instead
-            piece = board.piece_at(square)
-            if piece and piece.color == st.session_state.player_color:
-                st.session_state.selected_square = square
-            else:
-                st.session_state.selected_square = None
 
 
 # ════════════════════════════════════════════════════════════════
@@ -543,7 +433,6 @@ with st.sidebar:
         st.session_state.move_history = []
         st.session_state.game_over = False
         st.session_state.last_move = None
-        st.session_state.selected_square = None
         st.session_state.status_msg = "New game started! Your turn."
         st.session_state.eval_score = 0
         st.rerun()
@@ -655,71 +544,6 @@ CA-II · Reinforcement Learning
 """, unsafe_allow_html=True)
 
 
-def render_interactive_board():
-    board = st.session_state.board
-    selected = st.session_state.selected_square
-    player_color = st.session_state.player_color
-    last_move = st.session_state.last_move
-
-    # Determine legal moves for the selected piece
-    legal_destinations = []
-    if selected is not None:
-        legal_destinations = [m.to_square for m in board.legal_moves if m.from_square == selected]
-
-    # Last move squares
-    lm_squares = []
-    if last_move:
-        lm_squares = [last_move.from_square, last_move.to_square]
-
-    # Board container
-    st.markdown("<div class='board-wrap'>", unsafe_allow_html=True)
-
-    # Ranks (8 to 1)
-    ranks = range(7, -1, -1) if player_color == chess.WHITE else range(0, 8)
-    files = range(0, 8) if player_color == chess.WHITE else range(7, -1, -1)
-
-    for r in ranks:
-        cols = st.columns(8)
-        for f in files:
-            sq = chess.square(f, r)
-            piece = board.piece_at(sq)
-            
-            # Determine square color
-            is_dark = (r + f) % 2 == 0
-            btn_class = "dark-sq" if is_dark else "light-sq"
-
-            if sq == selected:
-                btn_class += " selected-sq"
-            elif sq in legal_destinations:
-                btn_class += " legal-sq"
-            elif sq in lm_squares:
-                btn_class += " last-move-sq"
-
-            # Piece styling
-            style = ""
-            if piece:
-                asset_url = PIECE_ASSETS.get(piece.symbol())
-                if asset_url:
-                    btn_class += " piece-btn"
-                    style = f"background-image: url('{asset_url}');"
-
-            with cols[f if player_color == chess.WHITE else 7-f]:
-                st.markdown(f"""
-                    <div class='square-btn {btn_class}'>
-                    <style>
-                    div[data-testid="stColumn"]:nth-child({(f if player_color == chess.WHITE else 7-f) + 1}) button[key="sq_{sq}"] {{
-                        {style}
-                    }}
-                    </style>
-                """, unsafe_allow_html=True)
-                if st.button("", key=f"sq_{sq}", help=chess.SQUARE_NAMES[sq]):
-                    handle_square_click(sq)
-                    st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-
 # ════════════════════════════════════════════════════════════════
 #  MAIN CONTENT
 # ════════════════════════════════════════════════════════════════
@@ -763,15 +587,48 @@ with col_board:
         turn = "Your turn ⬜" if board.turn == st.session_state.player_color else "AI is thinking... 🤖"
         st.info(f"🎯 {turn}")
 
-    # Interactive Board
-    render_interactive_board()
+    # Board SVG
+    last_move = st.session_state.last_move
+    svg = chess.svg.board(
+        board,
+        lastmove=last_move,
+        size=480,
+        colors={
+            "square light": "#F0D9B5",
+            "square dark": "#B58863",
+            "square light lastmove": "#CDD26A",
+            "square dark lastmove": "#AAAA44",
+        },
+        flipped=(st.session_state.player_color == chess.BLACK)
+    )
+    st.markdown(f"<div style='max-width:100%;'>{svg}</div>", unsafe_allow_html=True)
 
+    # Move input
     if not st.session_state.game_over and board.turn == st.session_state.player_color:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("💡 Get Hint", use_container_width=True):
-            hint_move = get_ai_move(board, "Intermediate ⚡")
-            if hint_move:
-                st.info(f"Suggestion: **{hint_move.uci()}**")
+        st.markdown("**Enter Move** *(UCI format: e2e4, g1f3, e1g1 for castling)*")
+        user_input = st.text_input("", placeholder="e.g. e2e4", key="move_input", label_visibility="collapsed")
+
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("▶ Make Move", use_container_width=True):
+                if user_input:
+                    try:
+                        move = chess.Move.from_uci(user_input.strip().lower())
+                        if move in board.legal_moves:
+                            board.push(move)
+                            st.session_state.last_move = move
+                            st.session_state.move_history.append(move)
+                            st.session_state.eval_score = evaluate_board(board)
+                            st.rerun()
+                        else:
+                            st.error("❌ Illegal move. Try again.")
+                    except Exception:
+                        st.error("❌ Invalid UCI format. Example: e2e4")
+        with c2:
+            if st.button("💡 Hint", use_container_width=True):
+                hint_move = get_ai_move(board, "Intermediate ⚡")
+                if hint_move:
+                    st.info(f"Suggestion: **{hint_move.uci()}**")
 
     # AI turn
     if not st.session_state.game_over and board.turn != st.session_state.player_color:
@@ -789,12 +646,8 @@ with col_board:
 with col_info:
     st.markdown("### 📊 Game Info")
 
-    # Evaluation bar
+    # Eval bar
     score = st.session_state.eval_score
-    # Cap score for visualization
-    capped_score = max(-1000, min(1000, score))
-    white_pct = 50 + (capped_score / 20) # -1000 to 1000 maps to 0 to 100
-    
     score_display = f"+{score/100:.1f}" if score > 0 else f"{score/100:.1f}"
     color_label = "White" if score > 0 else ("Black" if score < 0 else "Equal")
     adv_color = "#4CAF50" if score > 0 else ("#EF5350" if score < 0 else "#888")
@@ -802,56 +655,10 @@ with col_info:
     st.markdown(f"""
 <div class='info-card'>
   <h4>⚖️ Position Evaluation</h4>
-  <div class='eval-bar-container'>
-    <div class='eval-white' style='width: {white_pct}%'></div>
-    <div class='eval-black' style='width: {100-white_pct}%'></div>
-  </div>
   <p style='font-size:1.4rem; font-weight:700; color:{adv_color};'>{score_display}</p>
   <p style='color:#888; font-size:0.8rem;'>{color_label} advantage</p>
 </div>
 """, unsafe_allow_html=True)
-
-    # Captured pieces
-    starting_counts = {chess.PAWN: 8, chess.KNIGHT: 2, chess.BISHOP: 2, chess.ROOK: 2, chess.QUEEN: 1}
-    white_on_board = {t: 0 for t in starting_counts}
-    black_on_board = {t: 0 for t in starting_counts}
-    
-    for sq in chess.SQUARES:
-        p = board.piece_at(sq)
-        if p and p.piece_type != chess.KING:
-            if p.color == chess.WHITE: white_on_board[p.piece_type] += 1
-            else: black_on_board[p.piece_type] += 1
-            
-    white_captured = []
-    black_captured = []
-    for t, count in starting_counts.items():
-        white_captured.extend([t] * (count - white_on_board[t]))
-        black_captured.extend([t] * (count - black_on_board[t]))
-
-    def get_piece_img(ptype, color):
-        sym = chess.Piece(ptype, color).symbol()
-        return PIECE_ASSETS.get(sym, "")
-
-    st.markdown("<div class='info-card'><h4>📦 Captured Pieces</h4>", unsafe_allow_html=True)
-    
-    # White captures (Black's pieces)
-    st.markdown("<p style='font-size:0.7rem; color:#888; margin-bottom:2px;'>WHITE CAPTURED</p>", unsafe_allow_html=True)
-    cap_html = "<div class='captured-box'>"
-    for p in black_captured:
-        img = get_piece_img(p, chess.BLACK)
-        cap_html += f"<div class='captured-piece' style=\"background-image: url('{img}')\"></div>"
-    cap_html += "</div>"
-    st.markdown(cap_html, unsafe_allow_html=True)
-    
-    # Black captures (White's pieces)
-    st.markdown("<p style='font-size:0.7rem; color:#888; margin-top:8px; margin-bottom:2px;'>BLACK CAPTURED</p>", unsafe_allow_html=True)
-    cap_html = "<div class='captured-box'>"
-    for p in white_captured:
-        img = get_piece_img(p, chess.WHITE)
-        cap_html += f"<div class='captured-piece' style=\"background-image: url('{img}')\"></div>"
-    cap_html += "</div>"
-    st.markdown(cap_html, unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
 
     # Game stats
     st.markdown(f"""
