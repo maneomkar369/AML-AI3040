@@ -222,6 +222,8 @@ html, body, [class*="css"] {
 .dark-sq > button:hover { background-color: #A47854 !important; }
 
 .selected-sq > button { background-color: #CDD26A !important; border: 2px solid #D4AF37 !important; }
+.last-move-sq > button { background-color: rgba(205, 210, 106, 0.6) !important; }
+
 .legal-sq > button { position: relative; }
 .legal-sq > button::after {
     content: "";
@@ -232,6 +234,23 @@ html, body, [class*="css"] {
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
 }
+
+/* Eval Bar */
+.eval-bar-container {
+    height: 12px;
+    width: 100%;
+    background: #444;
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 10px 0;
+    display: flex;
+}
+.eval-white { background: #eee; height: 100%; transition: width 0.5s ease; }
+.eval-black { background: #111; height: 100%; transition: width 0.5s ease; }
+
+/* Captured pieces */
+.captured-box { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 5px; min-height: 25px; }
+.captured-piece { width: 20px; height: 20px; background-size: contain; background-repeat: no-repeat; opacity: 0.8; }
 
 /* Piece Assets */
 .piece-btn > button {
@@ -640,11 +659,17 @@ def render_interactive_board():
     board = st.session_state.board
     selected = st.session_state.selected_square
     player_color = st.session_state.player_color
+    last_move = st.session_state.last_move
 
     # Determine legal moves for the selected piece
     legal_destinations = []
     if selected is not None:
         legal_destinations = [m.to_square for m in board.legal_moves if m.from_square == selected]
+
+    # Last move squares
+    lm_squares = []
+    if last_move:
+        lm_squares = [last_move.from_square, last_move.to_square]
 
     # Board container
     st.markdown("<div class='board-wrap'>", unsafe_allow_html=True)
@@ -667,6 +692,8 @@ def render_interactive_board():
                 btn_class += " selected-sq"
             elif sq in legal_destinations:
                 btn_class += " legal-sq"
+            elif sq in lm_squares:
+                btn_class += " last-move-sq"
 
             # Piece styling
             style = ""
@@ -762,8 +789,12 @@ with col_board:
 with col_info:
     st.markdown("### 📊 Game Info")
 
-    # Eval bar
+    # Evaluation bar
     score = st.session_state.eval_score
+    # Cap score for visualization
+    capped_score = max(-1000, min(1000, score))
+    white_pct = 50 + (capped_score / 20) # -1000 to 1000 maps to 0 to 100
+    
     score_display = f"+{score/100:.1f}" if score > 0 else f"{score/100:.1f}"
     color_label = "White" if score > 0 else ("Black" if score < 0 else "Equal")
     adv_color = "#4CAF50" if score > 0 else ("#EF5350" if score < 0 else "#888")
@@ -771,10 +802,56 @@ with col_info:
     st.markdown(f"""
 <div class='info-card'>
   <h4>⚖️ Position Evaluation</h4>
+  <div class='eval-bar-container'>
+    <div class='eval-white' style='width: {white_pct}%'></div>
+    <div class='eval-black' style='width: {100-white_pct}%'></div>
+  </div>
   <p style='font-size:1.4rem; font-weight:700; color:{adv_color};'>{score_display}</p>
   <p style='color:#888; font-size:0.8rem;'>{color_label} advantage</p>
 </div>
 """, unsafe_allow_html=True)
+
+    # Captured pieces
+    starting_counts = {chess.PAWN: 8, chess.KNIGHT: 2, chess.BISHOP: 2, chess.ROOK: 2, chess.QUEEN: 1}
+    white_on_board = {t: 0 for t in starting_counts}
+    black_on_board = {t: 0 for t in starting_counts}
+    
+    for sq in chess.SQUARES:
+        p = board.piece_at(sq)
+        if p and p.piece_type != chess.KING:
+            if p.color == chess.WHITE: white_on_board[p.piece_type] += 1
+            else: black_on_board[p.piece_type] += 1
+            
+    white_captured = []
+    black_captured = []
+    for t, count in starting_counts.items():
+        white_captured.extend([t] * (count - white_on_board[t]))
+        black_captured.extend([t] * (count - black_on_board[t]))
+
+    def get_piece_img(ptype, color):
+        sym = chess.Piece(ptype, color).symbol()
+        return PIECE_ASSETS.get(sym, "")
+
+    st.markdown("<div class='info-card'><h4>📦 Captured Pieces</h4>", unsafe_allow_html=True)
+    
+    # White captures (Black's pieces)
+    st.markdown("<p style='font-size:0.7rem; color:#888; margin-bottom:2px;'>WHITE CAPTURED</p>", unsafe_allow_html=True)
+    cap_html = "<div class='captured-box'>"
+    for p in black_captured:
+        img = get_piece_img(p, chess.BLACK)
+        cap_html += f"<div class='captured-piece' style=\"background-image: url('{img}')\"></div>"
+    cap_html += "</div>"
+    st.markdown(cap_html, unsafe_allow_html=True)
+    
+    # Black captures (White's pieces)
+    st.markdown("<p style='font-size:0.7rem; color:#888; margin-top:8px; margin-bottom:2px;'>BLACK CAPTURED</p>", unsafe_allow_html=True)
+    cap_html = "<div class='captured-box'>"
+    for p in white_captured:
+        img = get_piece_img(p, chess.WHITE)
+        cap_html += f"<div class='captured-piece' style=\"background-image: url('{img}')\"></div>"
+    cap_html += "</div>"
+    st.markdown(cap_html, unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     # Game stats
     st.markdown(f"""
