@@ -450,89 +450,41 @@ with st.sidebar:
     # ── METHODOLOGY ──────────────────────────────────────────────
     st.markdown("## 📚 Methodology")
 
-    with st.expander("🧠 What is RL?", expanded=False):
+    with st.expander("🧠 Reinforcement Learning Approach", expanded=False):
         st.markdown("""
-**Reinforcement Learning (RL)** is a machine learning paradigm where an agent learns to make decisions by interacting with an environment to maximize cumulative reward.
+**Reinforcement Learning (RL)** is the paradigm of learning through interaction.
+- **State ($S$)**: The 64-square board configuration.
+- **Action ($A$)**: Selecting a legal move.
+- **Policy ($\pi$)**: Our Minimax search determines the optimal move for each state.
+- **Value Function ($V$)**: PST + Material heuristics approximate the "Goodness" of a state.
 
-**Key Components:**
-- **Agent** → The Chess AI
-- **Environment** → The Chessboard
-- **State** → Board position
-- **Action** → A legal chess move
-- **Reward** → Win (+1), Loss (−1), Draw (0)
+Our engine uses a **planning-based RL** model, where future rewards are discounted through tree search.
         """)
 
-    with st.expander("🌳 Minimax + Alpha-Beta", expanded=False):
+    with st.expander("🌳 Tree Search & Optimization", expanded=False):
         st.markdown("""
-**Minimax Algorithm** explores a game tree:
-- **MAX** node: AI maximizes score
-- **MIN** node: Opponent minimizes score
-
-**Alpha-Beta Pruning** cuts off branches that can't affect the result:
-```
-α = best score MAX can guarantee
-β = best score MIN can guarantee
-If β ≤ α → prune the branch
-```
-This reduces complexity from **O(b^d)** to **O(b^(d/2))**, effectively doubling search depth!
+**Alpha-Beta Pruning** is critical for performance:
+- It eliminates branches that cannot possibly influence the final decision.
+- **Heuristic Move Ordering** (Captures, Checks) ensures we find the best moves early, maximizing the pruning rate.
+- This allows our engine to search **4-5 steps ahead** in milliseconds.
         """)
 
-    with st.expander("♟️ Board Evaluation", expanded=False):
+    with st.expander("🎨 UI/UX Design Methodology", expanded=False):
         st.markdown("""
-**Material Value:**
-| Piece | Value |
-|-------|-------|
-| Pawn  | 100   |
-| Knight| 320   |
-| Bishop| 330   |
-| Rook  | 500   |
-| Queen | 900   |
-| King  | 20000 |
-
-**Piece-Square Tables (PST):**  
-Each piece has a 64-value table encoding positional bonuses — e.g., pawns are rewarded for advancing, knights for centralizing.
-
-**Score = Σ(material) + Σ(positional)**
+To provide **Realistic Movement**, we implemented:
+1. **Interactive State Machine**: A two-click system (Select → Move) replaces traditional text input.
+2. **Visual Fidelity**: Integration of high-quality **Lichess SVG assets** for professional piece rendering.
+3. **Real-time Feedback**: Dynamic CSS highlighting of selection, legal moves, and the AI's last move.
         """)
 
-    with st.expander("⚡ Move Ordering", expanded=False):
+    with st.expander("📊 Complexity & Nodes", expanded=False):
         st.markdown("""
-Alpha-Beta is most effective when best moves are searched first:
-
-1. **Captures** — high chance of material gain
-2. **Checks** — forcing moves limit opponent options  
-3. **Quiet moves** — positional improvements
-
-This **heuristic ordering** leads to far more pruning in practice.
-        """)
-
-    with st.expander("🎓 RL Connection", expanded=False):
-        st.markdown("""
-Classic chess engines use **planning** (Minimax), while modern RL agents like **AlphaZero** use:
-
-1. **Self-play** — generate training data by playing against itself
-2. **Monte Carlo Tree Search (MCTS)** — stochastic tree search
-3. **Deep Neural Network** — replaces handcrafted evaluation:
-   - Policy head → move probabilities
-   - Value head → position evaluation
-
-Our engine uses the **classical RL-adjacent approach** with:
-- Minimax as the *policy*
-- PST + material as the *value function*
-- Alpha-Beta as *efficient exploration*
-        """)
-
-    with st.expander("📊 Complexity Analysis", expanded=False):
-        st.markdown("""
-| Depth | Nodes (no pruning) | Nodes (α-β) |
-|-------|-------------------|--------------|
-| 1     | ~30               | ~30          |
-| 2     | ~900              | ~55          |
-| 3     | ~27,000           | ~300         |
-| 4     | ~810,000          | ~1,500       |
-
-Average branching factor in chess ≈ **35**  
-Alpha-Beta reduces it to ≈ **6** effectively.
+| Depth | Raw Nodes | Optimized (α-β) |
+|-------|-----------|-----------------|
+| 1     | ~35       | ~35             |
+| 2     | ~1,200    | ~60             |
+| 3     | ~42,000   | ~400            |
+| 4     | ~1.5M     | ~2,000          |
         """)
 
     st.markdown("---")
