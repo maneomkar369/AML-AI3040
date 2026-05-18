@@ -1,40 +1,43 @@
 import streamlit as st
 import chess
-import chess.svg
 import random
 import time
 import math
-from collections import defaultdict
+import importlib
+import streamlit_chess
+importlib.reload(streamlit_chess)
+from streamlit_chess import st_chess
 
 # ─── Page Config ────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Chess RL AI",
+    page_title="Neon Chess AI",
     page_icon="♟️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 # ─── Custom CSS ─────────────────────────────────────────────────────────────
-st.markdown("""
+st.markdown(r"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
 
 :root {
-    --gold: #D4AF37;
-    --gold-light: #F0D060;
-    --dark: #0D0D0D;
-    --dark2: #161616;
-    --dark3: #1E1E1E;
-    --dark4: #252525;
-    --border: #2A2A2A;
-    --text: #E8E8E8;
-    --muted: #888;
-    --green: #4CAF50;
-    --red: #EF5350;
+    --neon-blue: #00f3ff;
+    --neon-purple: #bc13fe;
+    --neon-pink: #ff007f;
+    --dark: #050510;
+    --dark2: #090914;
+    --dark3: #111122;
+    --dark4: #1a1a35;
+    --border: #2a2a4a;
+    --text: #e2e2ff;
+    --muted: #8888aa;
+    --green: #00ffcc;
+    --red: #ff3366;
 }
 
 html, body, [class*="css"] {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Rajdhani', sans-serif;
     background-color: var(--dark);
     color: var(--text);
 }
@@ -44,121 +47,160 @@ html, body, [class*="css"] {
 /* Header */
 .chess-header {
     text-align: center;
-    padding: 1.5rem 0 1rem;
+    padding: 2rem 0 1.5rem;
     border-bottom: 1px solid var(--border);
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+.chess-header::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--neon-blue), var(--neon-purple), transparent);
 }
 .chess-header h1 {
-    font-family: 'Playfair Display', serif;
-    font-size: 2.8rem;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 3.5rem;
     font-weight: 900;
-    color: var(--gold);
-    letter-spacing: -1px;
+    background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 20px rgba(0, 243, 255, 0.3);
     margin: 0;
     line-height: 1;
 }
 .chess-header p {
-    color: var(--muted);
-    font-size: 0.85rem;
-    letter-spacing: 3px;
+    color: var(--neon-blue);
+    font-size: 1rem;
+    letter-spacing: 4px;
     text-transform: uppercase;
-    margin-top: 6px;
+    margin-top: 10px;
+    text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
 }
 
 /* Status bar */
 .status-bar {
-    background: var(--dark3);
-    border: 1px solid var(--border);
+    background: rgba(17, 17, 34, 0.7);
+    border: 1px solid var(--neon-blue);
     border-radius: 10px;
     padding: 12px 20px;
     margin-bottom: 16px;
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 0.95rem;
-    font-weight: 500;
+    font-size: 1.1rem;
+    font-weight: 600;
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
 }
 .status-dot {
-    width: 10px; height: 10px;
+    width: 12px; height: 12px;
     border-radius: 50%;
     background: var(--green);
     animation: pulse 1.5s infinite;
+    box-shadow: 0 0 10px var(--green);
 }
 @keyframes pulse {
-    0%,100% { opacity: 1; }
-    50% { opacity: 0.3; }
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
 }
 
 /* Info cards */
 .info-card {
-    background: var(--dark3);
+    background: rgba(17, 17, 34, 0.7);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 18px;
-    margin-bottom: 12px;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+}
+.info-card:hover {
+    border-color: var(--neon-purple);
+    box-shadow: 0 0 15px rgba(188, 19, 254, 0.2);
+    transform: translateY(-2px);
 }
 .info-card h4 {
-    font-family: 'Playfair Display', serif;
-    color: var(--gold);
-    font-size: 0.85rem;
+    font-family: 'Orbitron', sans-serif;
+    color: var(--neon-blue);
+    font-size: 0.9rem;
     letter-spacing: 2px;
     text-transform: uppercase;
-    margin: 0 0 8px;
+    margin: 0 0 10px;
 }
 .info-card p {
     color: var(--text);
-    font-size: 0.9rem;
+    font-size: 1.1rem;
     margin: 0;
 }
 
 /* Move history */
 .move-history {
-    background: var(--dark3);
+    background: rgba(17, 17, 34, 0.7);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 18px;
-    max-height: 220px;
+    border-radius: 12px;
+    padding: 16px 20px;
+    max-height: 250px;
     overflow-y: auto;
     font-family: 'Courier New', monospace;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
 }
-.move-pair { display: flex; gap: 12px; margin-bottom: 4px; color: var(--text); }
-.move-num { color: var(--muted); min-width: 24px; }
-.move-w { color: var(--text); min-width: 60px; }
-.move-b { color: #aaa; }
+.move-history::-webkit-scrollbar { width: 6px; }
+.move-history::-webkit-scrollbar-thumb { background: var(--neon-purple); border-radius: 3px; }
+.move-pair { display: flex; gap: 15px; margin-bottom: 6px; color: var(--text); }
+.move-num { color: var(--neon-blue); min-width: 25px; font-weight: bold; }
+.move-w { color: #fff; min-width: 65px; }
+.move-b { color: var(--muted); }
 
 /* Sidebar */
 [data-testid="stSidebar"] {
     background-color: var(--dark2) !important;
     border-right: 1px solid var(--border);
 }
+[data-testid="stSidebar"]::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0; width: 1px;
+    background: linear-gradient(180deg, transparent, var(--neon-purple), transparent);
+}
 [data-testid="stSidebar"] h1,
 [data-testid="stSidebar"] h2,
 [data-testid="stSidebar"] h3 {
-    color: var(--gold) !important;
-    font-family: 'Playfair Display', serif;
+    color: var(--neon-blue) !important;
+    font-family: 'Orbitron', sans-serif;
 }
 
 /* Buttons */
 .stButton > button {
-    background: var(--dark4);
-    color: var(--text);
-    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--neon-blue);
+    border: 1px solid var(--neon-blue);
     border-radius: 8px;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.85rem;
-    font-weight: 500;
-    padding: 8px 18px;
-    transition: all 0.2s;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    transition: all 0.3s;
     width: 100%;
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.1) inset;
 }
 .stButton > button:hover {
-    background: var(--gold);
+    background: var(--neon-blue);
     color: var(--dark);
-    border-color: var(--gold);
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.4);
+}
+.stButton > button:active {
+    transform: scale(0.98);
 }
 
 /* Select box */
+.stSelectbox label {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--neon-pink) !important;
+}
 .stSelectbox > div > div {
     background: var(--dark3);
     border: 1px solid var(--border);
@@ -167,42 +209,58 @@ html, body, [class*="css"] {
 }
 
 /* Metric */
-.stMetric { background: var(--dark3); border-radius: 10px; padding: 12px; border: 1px solid var(--border); }
+.stMetric { background: rgba(17, 17, 34, 0.7); border-radius: 10px; padding: 12px; border: 1px solid var(--border); }
+[data-testid="stMetricValue"] {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--neon-purple);
+}
+[data-testid="stMetricLabel"] {
+    color: var(--neon-blue) !important;
+}
 
 /* Board container */
 .board-wrap {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: var(--dark2);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 20px;
+    background: radial-gradient(circle, var(--dark3) 0%, var(--dark2) 100%);
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 0 30px rgba(0,0,0,0.8);
+    transition: all 0.3s;
+}
+.board-wrap:hover {
+    border-color: var(--neon-purple);
+    box-shadow: 0 0 40px rgba(188, 19, 254, 0.2);
 }
 
 /* Text input */
 .stTextInput input {
     background: var(--dark3);
     border: 1px solid var(--border);
-    color: var(--text);
+    color: var(--neon-blue);
     border-radius: 8px;
     font-family: 'Courier New', monospace;
-    font-size: 1rem;
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: center;
+    letter-spacing: 2px;
 }
 .stTextInput input:focus {
-    border-color: var(--gold);
-    box-shadow: 0 0 0 2px rgba(212,175,55,0.15);
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
 }
 
 /* Expander */
 .streamlit-expanderHeader {
     background: var(--dark3);
     border-radius: 8px;
-    color: var(--gold) !important;
-    font-family: 'Playfair Display', serif;
+    color: var(--neon-pink) !important;
+    font-family: 'Orbitron', sans-serif;
 }
 
-hr { border-color: var(--border); }
+hr { border-color: var(--border); opacity: 0.5; }
 
 /* Hide streamlit branding */
 #MainMenu, footer, header { visibility: hidden; }
@@ -211,117 +269,174 @@ hr { border-color: var(--border); }
 
 
 # ════════════════════════════════════════════════════════════════
-#  REINFORCEMENT LEARNING ENGINE
+#  SESSION STATE INITIALIZATION
 # ════════════════════════════════════════════════════════════════
 
-PIECE_VALUES = {
-    chess.PAWN: 100,
-    chess.KNIGHT: 320,
-    chess.BISHOP: 330,
-    chess.ROOK: 500,
-    chess.QUEEN: 900,
-    chess.KING: 20000,
-}
+def init_state():
+    if "board" not in st.session_state:
+        st.session_state.board = chess.Board()
+    if "move_history" not in st.session_state:
+        st.session_state.move_history = []
+    if "player_color" not in st.session_state:
+        st.session_state.player_color = chess.WHITE
+    if "game_over" not in st.session_state:
+        st.session_state.game_over = False
+    if "last_move" not in st.session_state:
+        st.session_state.last_move = None
+    if "eval_score" not in st.session_state:
+        st.session_state.eval_score = 0
+    if "difficulty" not in st.session_state:
+        st.session_state.difficulty = "CYBER 🔵"
+    if "wins" not in st.session_state:
+        st.session_state.wins = 0
+    if "losses" not in st.session_state:
+        st.session_state.losses = 0
+    if "draws" not in st.session_state:
+        st.session_state.draws = 0
 
-# Piece-square tables for positional evaluation
-PAWN_TABLE = [
-     0,  0,  0,  0,  0,  0,  0,  0,
-    50, 50, 50, 50, 50, 50, 50, 50,
-    10, 10, 20, 30, 30, 20, 10, 10,
-     5,  5, 10, 25, 25, 10,  5,  5,
-     0,  0,  0, 20, 20,  0,  0,  0,
-     5, -5,-10,  0,  0,-10, -5,  5,
-     5, 10, 10,-20,-20, 10, 10,  5,
-     0,  0,  0,  0,  0,  0,  0,  0,
-]
-KNIGHT_TABLE = [
-    -50,-40,-30,-30,-30,-30,-40,-50,
-    -40,-20,  0,  0,  0,  0,-20,-40,
-    -30,  0, 10, 15, 15, 10,  0,-30,
-    -30,  5, 15, 20, 20, 15,  5,-30,
-    -30,  0, 15, 20, 20, 15,  0,-30,
-    -30,  5, 10, 15, 15, 10,  5,-30,
-    -40,-20,  0,  5,  5,  0,-20,-40,
-    -50,-40,-30,-30,-30,-30,-40,-50,
-]
-BISHOP_TABLE = [
-    -20,-10,-10,-10,-10,-10,-10,-20,
-    -10,  0,  0,  0,  0,  0,  0,-10,
-    -10,  0,  5, 10, 10,  5,  0,-10,
-    -10,  5,  5, 10, 10,  5,  5,-10,
-    -10,  0, 10, 10, 10, 10,  0,-10,
-    -10, 10, 10, 10, 10, 10, 10,-10,
-    -10,  5,  0,  0,  0,  0,  5,-10,
-    -20,-10,-10,-10,-10,-10,-10,-20,
-]
-ROOK_TABLE = [
-     0,  0,  0,  0,  0,  0,  0,  0,
-     5, 10, 10, 10, 10, 10, 10,  5,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-     0,  0,  0,  5,  5,  0,  0,  0,
-]
-QUEEN_TABLE = [
-    -20,-10,-10, -5, -5,-10,-10,-20,
-    -10,  0,  0,  0,  0,  0,  0,-10,
-    -10,  0,  5,  5,  5,  5,  0,-10,
-     -5,  0,  5,  5,  5,  5,  0, -5,
-      0,  0,  5,  5,  5,  5,  0, -5,
-    -10,  5,  5,  5,  5,  5,  0,-10,
-    -10,  0,  5,  0,  0,  0,  0,-10,
-    -20,-10,-10, -5, -5,-10,-10,-20,
-]
-KING_TABLE = [
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -20,-30,-30,-40,-40,-30,-30,-20,
-    -10,-20,-20,-20,-20,-20,-20,-10,
-     20, 20,  0,  0,  0,  0, 20, 20,
-     20, 30, 10,  0,  0, 10, 30, 20,
-]
+    # RL State
+    if "rl_weights" not in st.session_state:
+        st.session_state.rl_weights = {
+            "pawn": 100.0,
+            "knight": 320.0,
+            "bishop": 330.0,
+            "rook": 500.0,
+            "queen": 900.0,
+            "center": 15.0,
+            "mobility": 5.0,
+        }
+    if "rl_training_history" not in st.session_state:
+        st.session_state.rl_training_history = []
+    if "episodes" not in st.session_state:
+        st.session_state.episodes = 0
+    if "selected_square" not in st.session_state:
+        st.session_state.selected_square = None
+    if "last_click_coords" not in st.session_state:
+        st.session_state.last_click_coords = None
 
-TABLES = {
-    chess.PAWN: PAWN_TABLE,
-    chess.KNIGHT: KNIGHT_TABLE,
-    chess.BISHOP: BISHOP_TABLE,
-    chess.ROOK: ROOK_TABLE,
-    chess.QUEEN: QUEEN_TABLE,
-    chess.KING: KING_TABLE,
-}
+init_state()
 
 
-def evaluate_board(board: chess.Board) -> int:
-    """Evaluate board from White's perspective using material + PST."""
-    if board.is_checkmate():
-        return -20000 if board.turn == chess.WHITE else 20000
-    if board.is_stalemate() or board.is_insufficient_material():
-        return 0
+# ════════════════════════════════════════════════════════════════
+#  REINFORCEMENT LEARNING ENGINE (TD-LEARNING)
+# ════════════════════════════════════════════════════════════════
 
-    score = 0
-    for sq in chess.SQUARES:
-        piece = board.piece_at(sq)
-        if piece is None:
-            continue
-        val = PIECE_VALUES[piece.piece_type]
-        table = TABLES[piece.piece_type]
-        if piece.color == chess.WHITE:
-            pos_val = table[sq]
-            score += val + pos_val
-        else:
-            pos_val = table[chess.square_mirror(sq)]
-            score -= val + pos_val
-    return score
+class RLAgent:
+    def __init__(self):
+        self.weights = st.session_state.rl_weights
+        
+    def get_features(self, board):
+        """Extract linear features for the value function approximator."""
+        f = {k: 0.0 for k in self.weights.keys()}
+        center = [chess.D4, chess.E4, chess.D5, chess.E5]
+        
+        for sq in chess.SQUARES:
+            piece = board.piece_at(sq)
+            if piece:
+                sign = 1.0 if piece.color == chess.WHITE else -1.0
+                pt = piece.piece_type
+                if pt == chess.PAWN: f["pawn"] += sign
+                elif pt == chess.KNIGHT: f["knight"] += sign
+                elif pt == chess.BISHOP: f["bishop"] += sign
+                elif pt == chess.ROOK: f["rook"] += sign
+                elif pt == chess.QUEEN: f["queen"] += sign
+                
+                if sq in center:
+                    f["center"] += sign
+                    
+        turn_sign = 1.0 if board.turn == chess.WHITE else -1.0
+        f["mobility"] += turn_sign * board.legal_moves.count()
+        return f
+
+    def value(self, board):
+        """Compute V(s) = sum(w_i * f_i)"""
+        if board.is_checkmate():
+            return -10000.0 if board.turn == chess.WHITE else 10000.0
+        if board.is_stalemate() or board.is_insufficient_material():
+            return 0.0
+        
+        f = self.get_features(board)
+        val = sum(self.weights[k] * f[k] for k in self.weights.keys())
+        return val
+
+    def train_self_play(self, num_games, alpha, epsilon, gamma):
+        """Execute self-play batch using epsilon-greedy and TD(0) backward update."""
+        prog = st.progress(0, text="Initializing self-play...")
+        
+        for i in range(num_games):
+            prog.progress((i) / num_games, text=f"Simulating Game {i+1}/{num_games}...")
+            board = chess.Board()
+            states = [board.copy()]
+            
+            # Limit moves to prevent infinite loops in random play
+            while not board.is_game_over() and len(states) < 100:
+                if random.random() < epsilon:
+                    # Exploration
+                    move = random.choice(list(board.legal_moves))
+                else:
+                    # Exploitation: 1-step lookahead greedy
+                    best_val = -math.inf if board.turn == chess.WHITE else math.inf
+                    best_move = None
+                    for m in board.legal_moves:
+                        board.push(m)
+                        val = self.value(board)
+                        board.pop()
+                        if board.turn == chess.WHITE:
+                            if val > best_val: best_val, best_move = val, m
+                        else:
+                            if val < best_val: best_val, best_move = val, m
+                    if best_move is None:
+                        best_move = random.choice(list(board.legal_moves))
+                    move = best_move
+                
+                board.push(move)
+                states.append(board.copy())
+            
+            # End of game reward
+            r = 0.0
+            if board.is_checkmate():
+                r = 10000.0 if board.turn == chess.BLACK else -10000.0
+            
+            # TD Update (backward pass)
+            for t in range(len(states)-2, -1, -1):
+                s = states[t]
+                s_next = states[t+1]
+                v_s = self.value(s)
+                
+                if t == len(states)-2:
+                    v_next = r
+                else:
+                    v_next = self.value(s_next)
+                    
+                # Temporal Difference Error
+                td_error = (gamma * v_next) - v_s
+                if t == len(states)-2:
+                    td_error = r - v_s
+                
+                # Clip error to prevent exploding gradients
+                td_error = max(-5000.0, min(5000.0, td_error))
+                
+                f = self.get_features(s)
+                for k in self.weights.keys():
+                    self.weights[k] += alpha * td_error * f[k]
+                    # Soft constraint to keep material weights positive
+                    if k != "mobility":
+                        self.weights[k] = max(0.1, self.weights[k])
+
+            st.session_state.episodes += 1
+            st.session_state.rl_training_history.append(r)
+            
+        prog.progress(1.0, text="Training complete.")
+        time.sleep(0.5)
+        prog.empty()
+
+rl_agent = RLAgent()
 
 
 def minimax(board, depth, alpha, beta, maximizing):
-    """Alpha-Beta Minimax — the RL-inspired tree search."""
+    """Alpha-Beta Minimax — Using true RL Value Function at leaves."""
     if depth == 0 or board.is_game_over():
-        return evaluate_board(board), None
+        return rl_agent.value(board), None
 
     best_move = None
     if maximizing:
@@ -364,7 +479,7 @@ def order_moves(board):
 
 
 def get_ai_move(board, difficulty):
-    depth_map = {"Beginner 🌱": 1, "Intermediate ⚡": 2, "Advanced 🔥": 3, "Expert 👑": 4}
+    depth_map = {"NOVICE 🟢": 1, "CYBER 🔵": 2, "NEURAL 🟣": 3, "QUANTUM 🔴": 4}
     depth = depth_map.get(difficulty, 2)
     maximizing = (board.turn == chess.WHITE)
     _, move = minimax(board, depth, -math.inf, math.inf, maximizing)
@@ -375,126 +490,8 @@ def get_ai_move(board, difficulty):
 
 
 # ════════════════════════════════════════════════════════════════
-#  SESSION STATE
-# ════════════════════════════════════════════════════════════════
-
-def init_state():
-    if "board" not in st.session_state:
-        st.session_state.board = chess.Board()
-    if "move_history" not in st.session_state:
-        st.session_state.move_history = []
-    if "player_color" not in st.session_state:
-        st.session_state.player_color = chess.WHITE
-    if "game_over" not in st.session_state:
-        st.session_state.game_over = False
-    if "last_move" not in st.session_state:
-        st.session_state.last_move = None
-    if "ai_thinking" not in st.session_state:
-        st.session_state.ai_thinking = False
-    if "selected_square" not in st.session_state:
-        st.session_state.selected_square = None
-    if "status_msg" not in st.session_state:
-        st.session_state.status_msg = "Your turn — enter a move in UCI notation (e.g. e2e4)"
-    if "eval_score" not in st.session_state:
-        st.session_state.eval_score = 0
-    if "difficulty" not in st.session_state:
-        st.session_state.difficulty = "Intermediate ⚡"
-    if "wins" not in st.session_state:
-        st.session_state.wins = 0
-    if "losses" not in st.session_state:
-        st.session_state.losses = 0
-    if "draws" not in st.session_state:
-        st.session_state.draws = 0
-
-init_state()
-
-
-# ════════════════════════════════════════════════════════════════
 #  SIDEBAR — METHODOLOGY
 # ════════════════════════════════════════════════════════════════
-
-with st.sidebar:
-    st.markdown("## ♟️ Chess RL AI")
-    st.markdown("---")
-
-    st.markdown("### 🎮 Game Settings")
-    difficulty = st.selectbox(
-        "AI Difficulty",
-        ["Beginner 🌱", "Intermediate ⚡", "Advanced 🔥", "Expert 👑"],
-        index=1,
-    )
-    st.session_state.difficulty = difficulty
-
-    player_side = st.selectbox("Play as", ["White ⬜", "Black ⬛"])
-    st.session_state.player_color = chess.WHITE if "White" in player_side else chess.BLACK
-
-    if st.button("🔄 New Game"):
-        st.session_state.board = chess.Board()
-        st.session_state.move_history = []
-        st.session_state.game_over = False
-        st.session_state.last_move = None
-        st.session_state.status_msg = "New game started! Your turn."
-        st.session_state.eval_score = 0
-        st.rerun()
-
-    st.markdown("---")
-
-    # Score
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Wins", st.session_state.wins)
-    c2.metric("Losses", st.session_state.losses)
-    c3.metric("Draws", st.session_state.draws)
-
-    st.markdown("---")
-
-    # ── METHODOLOGY ──────────────────────────────────────────────
-    st.markdown("## 📚 Methodology")
-
-    with st.expander("🧠 Reinforcement Learning Approach", expanded=False):
-        st.markdown("""
-**Reinforcement Learning (RL)** is the paradigm of learning through interaction.
-- **State ($S$)**: The 64-square board configuration.
-- **Action ($A$)**: Selecting a legal move.
-- **Policy ($\pi$)**: Our Minimax search determines the optimal move for each state.
-- **Value Function ($V$)**: PST + Material heuristics approximate the "Goodness" of a state.
-
-Our engine uses a **planning-based RL** model, where future rewards are discounted through tree search.
-        """)
-
-    with st.expander("🌳 Tree Search & Optimization", expanded=False):
-        st.markdown("""
-**Alpha-Beta Pruning** is critical for performance:
-- It eliminates branches that cannot possibly influence the final decision.
-- **Heuristic Move Ordering** (Captures, Checks) ensures we find the best moves early, maximizing the pruning rate.
-- This allows our engine to search **4-5 steps ahead** in milliseconds.
-        """)
-
-    with st.expander("🎨 UI/UX Design Methodology", expanded=False):
-        st.markdown("""
-To provide **Realistic Movement**, we implemented:
-1. **Interactive State Machine**: A two-click system (Select → Move) replaces traditional text input.
-2. **Visual Fidelity**: Integration of high-quality **Lichess SVG assets** for professional piece rendering.
-3. **Real-time Feedback**: Dynamic CSS highlighting of selection, legal moves, and the AI's last move.
-        """)
-
-    with st.expander("📊 Complexity & Nodes", expanded=False):
-        st.markdown("""
-| Depth | Raw Nodes | Optimized (α-β) |
-|-------|-----------|-----------------|
-| 1     | ~35       | ~35             |
-| 2     | ~1,200    | ~60             |
-| 3     | ~42,000   | ~400            |
-| 4     | ~1.5M     | ~2,000          |
-        """)
-
-    st.markdown("---")
-    st.markdown("""
-<div style='font-size:0.75rem; color:#666; text-align:center;'>
-BTAIC602 · Advanced Machine Learning<br>
-CA-II · Reinforcement Learning
-</div>
-""", unsafe_allow_html=True)
-
 
 # ════════════════════════════════════════════════════════════════
 #  MAIN CONTENT
@@ -502,142 +499,196 @@ CA-II · Reinforcement Learning
 
 st.markdown("""
 <div class='chess-header'>
-  <h1>♟ Chess AI</h1>
-  <p>Reinforcement Learning · Minimax · Alpha-Beta Pruning</p>
+  <h1>NEON CHESS AI</h1>
+  <p>TRUE RL · TD-LEARNING · SELF-PLAY · CYBER-AESTHETIC</p>
 </div>
 """, unsafe_allow_html=True)
 
 board = st.session_state.board
 
 # Layout
-col_board, col_info = st.columns([3, 2])
+col_board, col_info = st.columns([3, 2], gap="large")
 
 with col_board:
     # Status
     if board.is_checkmate():
-        winner = "Black" if board.turn == chess.WHITE else "White"
-        st.error(f"♚ Checkmate! **{winner}** wins!")
+        winner = "DARK" if board.turn == chess.WHITE else "LIGHT"
+        st.markdown(f"<div class='status-bar' style='border-color:var(--red); color:var(--red);'><div class='status-dot' style='background:var(--red);'></div> CRITICAL HIT! <b>{winner}</b> WINS VIA CHECKMATE.</div>", unsafe_allow_html=True)
         if not st.session_state.game_over:
             st.session_state.game_over = True
-            if winner == ("White" if st.session_state.player_color == chess.WHITE else "Black"):
+            if winner == ("LIGHT" if st.session_state.player_color == chess.WHITE else "DARK"):
                 st.session_state.wins += 1
             else:
                 st.session_state.losses += 1
     elif board.is_stalemate():
-        st.warning("🤝 Stalemate — Draw!")
+        st.markdown("<div class='status-bar' style='border-color:var(--muted); color:var(--text);'><div class='status-dot' style='background:var(--muted);'></div> STALEMATE PROTOCOL ENGAGED.</div>", unsafe_allow_html=True)
         if not st.session_state.game_over:
             st.session_state.game_over = True
             st.session_state.draws += 1
     elif board.is_insufficient_material():
-        st.warning("🤝 Insufficient material — Draw!")
+        st.markdown("<div class='status-bar' style='border-color:var(--muted); color:var(--text);'><div class='status-dot' style='background:var(--muted);'></div> INSUFFICIENT MATERIAL FOR DOMINANCE.</div>", unsafe_allow_html=True)
         if not st.session_state.game_over:
             st.session_state.game_over = True
             st.session_state.draws += 1
     elif board.is_check():
-        st.warning("⚠️ **Check!** Your king is under attack.")
+        st.markdown("<div class='status-bar' style='border-color:var(--neon-pink); color:var(--neon-pink);'><div class='status-dot' style='background:var(--neon-pink);'></div> WARNING: KING COMPROMISED. EVADE IMMEDIATELY.</div>", unsafe_allow_html=True)
     else:
-        turn = "Your turn ⬜" if board.turn == st.session_state.player_color else "AI is thinking... 🤖"
-        st.info(f"🎯 {turn}")
+        if board.turn == st.session_state.player_color:
+            st.markdown("<div class='status-bar'><div class='status-dot'></div> USER INPUT REQUIRED. AWAITING COMMAND...</div>", unsafe_allow_html=True)
+        else:
+            st.markdown("<div class='status-bar' style='border-color:var(--neon-purple); color:var(--neon-purple);'><div class='status-dot' style='background:var(--neon-purple);'></div> AI PROCESSING NEURAL PATHWAYS...</div>", unsafe_allow_html=True)
 
-    # Board SVG
-    last_move = st.session_state.last_move
-    svg = chess.svg.board(
-        board,
-        lastmove=last_move,
-        size=480,
-        colors={
-            "square light": "#F0D9B5",
-            "square dark": "#B58863",
-            "square light lastmove": "#CDD26A",
-            "square dark lastmove": "#AAAA44",
-        },
-        flipped=(st.session_state.player_color == chess.BLACK)
-    )
-    st.markdown(f"<div style='max-width:100%;'>{svg}</div>", unsafe_allow_html=True)
+    # Board SVG and Click Handling
+    board_flipped = (st.session_state.player_color == chess.BLACK)
+    
+    # Calculate legal moves for frontend highlight
+    legal_moves_dict = {}
+    if board.turn == st.session_state.player_color:
+        for m in board.legal_moves:
+            src = chess.square_name(m.from_square)
+            dst = chess.square_name(m.to_square)
+            if src not in legal_moves_dict:
+                legal_moves_dict[src] = []
+            legal_moves_dict[src].append(dst)
 
-    # Move input
+    st.markdown("<div class='board-wrap'>", unsafe_allow_html=True)
+    move_val = st_chess(board.fen(), legal_moves=legal_moves_dict, board_flipped=board_flipped, key="cyber_chess_board")
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+
     if not st.session_state.game_over and board.turn == st.session_state.player_color:
-        st.markdown("**Enter Move** *(UCI format: e2e4, g1f3, e1g1 for castling)*")
-        user_input = st.text_input("", placeholder="e.g. e2e4", key="move_input", label_visibility="collapsed")
-
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("▶ Make Move", use_container_width=True):
-                if user_input:
+        if move_val is not None:
+            # Check if this is a new move by comparing timestamp
+            if "last_move_timestamp" not in st.session_state:
+                st.session_state.last_move_timestamp = 0
+            
+            current_timestamp = move_val.get("timestamp", 0)
+            if current_timestamp > st.session_state.last_move_timestamp:
+                st.session_state.last_move_timestamp = current_timestamp
+                
+                source = move_val.get("source")
+                target = move_val.get("target")
+                
+                # Convert chessboard.js format (e.g., "e2") to python-chess format
+                if source and target:
                     try:
-                        move = chess.Move.from_uci(user_input.strip().lower())
+                        move = chess.Move.from_uci(source + target)
+                        # Handle promotion
+                        piece = board.piece_at(chess.parse_square(source))
+                        if piece and piece.piece_type == chess.PAWN:
+                            if target[1] == '8' or target[1] == '1':
+                                move = chess.Move.from_uci(source + target + 'q')
+                        
                         if move in board.legal_moves:
                             board.push(move)
                             st.session_state.last_move = move
                             st.session_state.move_history.append(move)
-                            st.session_state.eval_score = evaluate_board(board)
+                            st.session_state.eval_score = rl_agent.value(board)
                             st.rerun()
                         else:
-                            st.error("❌ Illegal move. Try again.")
-                    except Exception:
-                        st.error("❌ Invalid UCI format. Example: e2e4")
-        with c2:
-            if st.button("💡 Hint", use_container_width=True):
-                hint_move = get_ai_move(board, "Intermediate ⚡")
-                if hint_move:
-                    st.info(f"Suggestion: **{hint_move.uci()}**")
+                            st.error("❌ ILLEGAL MOVE SEQUENCE DETECTED.")
+                    except:
+                        pass
+
+        if st.button("💡 REQUEST AI ASSIST", use_container_width=True):
+            hint_move = get_ai_move(board, "CYBER 🔵")
+            if hint_move:
+                st.info(f"OPTIMAL VECTOR: **{hint_move.uci()}**")
 
     # AI turn
     if not st.session_state.game_over and board.turn != st.session_state.player_color:
-        with st.spinner("🤖 AI calculating best move..."):
-            time.sleep(0.3)
+        with st.spinner("🧠 Quantum Cores Online..."):
+            time.sleep(0.4)
             ai_move = get_ai_move(board, st.session_state.difficulty)
             if ai_move:
                 board.push(ai_move)
                 st.session_state.last_move = ai_move
                 st.session_state.move_history.append(ai_move)
-                st.session_state.eval_score = evaluate_board(board)
+                st.session_state.eval_score = rl_agent.value(board)
         st.rerun()
 
 
 with col_info:
-    st.markdown("### 📊 Game Info")
 
-    # Eval bar
-    score = st.session_state.eval_score
-    score_display = f"+{score/100:.1f}" if score > 0 else f"{score/100:.1f}"
-    color_label = "White" if score > 0 else ("Black" if score < 0 else "Equal")
-    adv_color = "#4CAF50" if score > 0 else ("#EF5350" if score < 0 else "#888")
+    tab_dash, tab_train, tab_sys = st.tabs(["📊 DASHBOARD", "🧬 RL TRAINING", "⚙️ SYSTEM CORE"])
 
-    st.markdown(f"""
+    with tab_sys:
+        st.markdown("### 🎛️ PROTOCOLS")
+        difficulty = st.selectbox(
+            "AI CAPABILITY",
+            ["NOVICE 🟢", "CYBER 🔵", "NEURAL 🟣", "QUANTUM 🔴"],
+            index=1,
+        )
+        st.session_state.difficulty = difficulty
+
+        player_side = st.selectbox("FACTION ALLIANCE", ["LIGHT ⬜", "DARK ⬛"])
+        st.session_state.player_color = chess.WHITE if "LIGHT" in player_side else chess.BLACK
+
+        if st.button("⚡ INITIALIZE NEW MATCH"):
+            st.session_state.board = chess.Board()
+            st.session_state.move_history = []
+            st.session_state.game_over = False
+            st.session_state.last_move = None
+            st.session_state.eval_score = rl_agent.value(st.session_state.board)
+            st.rerun()
+
+    with tab_train:
+        st.markdown("### 🧬 RL TRAINING FACILITY")
+        with st.expander("CONFIGURE HYPERPARAMETERS", expanded=True):
+            train_games = st.slider("EPISODES BATCH", 1, 20, 5)
+            train_alpha = st.slider("LEARNING RATE (α)", 0.0001, 0.0100, 0.0010, format="%.4f")
+            train_eps = st.slider("EXPLORATION (ε)", 0.0, 1.0, 0.2)
+            train_gamma = st.slider("DISCOUNT (γ)", 0.5, 1.0, 0.95)
+            
+            if st.button("🔥 EXECUTE SELF-PLAY BATCH", use_container_width=True):
+                rl_agent.train_self_play(train_games, train_alpha, train_eps, train_gamma)
+                st.rerun()
+                
+        st.markdown("### 🧠 NEURAL DB")
+        with st.expander("📡 TRUE RL ARCHITECTURE", expanded=True):
+            st.markdown('''**Reinforcement Learning (RL)** implemented via **Linear TD-Learning**.
+- **State ($S$)**: Extracted as a feature vector $\\vec{f}(S)$ of material and mobility.
+- **Value Function ($V$)**: $V(S) = \\vec{w} \cdot \\vec{f}(S)$.
+- **Learning**: Weights $\\vec{w}$ are dynamically updated via TD(0) after episodes based on reward signals (+10k win, -10k loss).''')
+
+        with st.expander("🔄 EXPLORATION vs EXPLOITATION", expanded=True):
+            st.markdown('''Uses an **$\\epsilon$-greedy policy** during self-play.
+- With probability $\\epsilon$, the agent picks a random vector to discover new strategies.
+- With probability $1-\\epsilon$, the agent exploits its current value weights.''')
+
+    with tab_dash:
+        st.markdown("### 📊 TELEMETRY")
+
+        # Eval bar
+        score = st.session_state.eval_score
+        score_display = f"+{score/100:.1f}" if score > 0 else f"{score/100:.1f}"
+        color_label = "LIGHT" if score > 0 else ("DARK" if score < 0 else "EQUILIBRIUM")
+        adv_color = "var(--green)" if score > 0 else ("var(--neon-pink)" if score < 0 else "var(--muted)")
+
+        st.markdown(f"""
 <div class='info-card'>
-  <h4>⚖️ Position Evaluation</h4>
-  <p style='font-size:1.4rem; font-weight:700; color:{adv_color};'>{score_display}</p>
-  <p style='color:#888; font-size:0.8rem;'>{color_label} advantage</p>
+  <h4>⚖️ DOMINANCE RATIO</h4>
+  <p style='font-family:"Orbitron", sans-serif; font-size:1.8rem; font-weight:700; color:{adv_color}; text-shadow: 0 0 10px {adv_color};'>{score_display}</p>
+  <p style='color:var(--muted); font-size:0.8rem; text-transform:uppercase; letter-spacing:1px;'>{color_label} ADVANTAGE</p>
 </div>
 """, unsafe_allow_html=True)
 
-    # Game stats
-    st.markdown(f"""
-<div class='info-card'>
-  <h4>🎲 Game Stats</h4>
-  <p>Moves played: <strong>{len(st.session_state.move_history)}</strong></p>
-  <p>Turn: <strong>{'White' if board.turn == chess.WHITE else 'Black'}</strong></p>
-  <p>Difficulty: <strong>{st.session_state.difficulty}</strong></p>
-  <p>Castling rights: <strong>{'Yes' if board.has_castling_rights(board.turn) else 'None'}</strong></p>
-</div>
-""", unsafe_allow_html=True)
-
-    # Legal moves count
-    legal_count = board.legal_moves.count()
-    st.markdown(f"""
-<div class='info-card'>
-  <h4>🔢 Legal Moves Available</h4>
-  <p style='font-size:1.8rem; font-weight:700; color:#D4AF37;'>{legal_count}</p>
-</div>
-""", unsafe_allow_html=True)
+    # RL Metrics
+    st.markdown("### 🧬 NEURAL WEIGHTS")
+    st.bar_chart(st.session_state.rl_weights)
+    
+    # Training history
+    if st.session_state.episodes > 0:
+        st.markdown(f"<p style='color:var(--muted); font-size:0.8rem;'>TRAINING EPISODES: {st.session_state.episodes}</p>", unsafe_allow_html=True)
+        # Smooth the rewards for the chart
+        if len(st.session_state.rl_training_history) > 0:
+            st.line_chart(st.session_state.rl_training_history)
 
     # Move history
-    st.markdown("### 📜 Move History")
+    st.markdown("### 📜 EXECUTION LOG")
     history = st.session_state.move_history
     if history:
         board_temp = chess.Board()
-        pairs = []
         moves_san = []
         for m in history:
             try:
@@ -650,27 +701,13 @@ with col_info:
         history_html = "<div class='move-history'>"
         for i in range(0, len(moves_san), 2):
             white_m = moves_san[i]
-            black_m = moves_san[i+1] if i+1 < len(moves_san) else ""
+            black_m = moves_san[i+1] if i+1 < len(moves_san) else "..."
             history_html += f"""<div class='move-pair'>
-                <span class='move-num'>{i//2 + 1}.</span>
+                <span class='move-num'>{(i//2 + 1):02d}</span>
                 <span class='move-w'>{white_m}</span>
                 <span class='move-b'>{black_m}</span>
             </div>"""
         history_html += "</div>"
         st.markdown(history_html, unsafe_allow_html=True)
     else:
-        st.markdown("<div class='move-history' style='color:#555;'>No moves yet...</div>", unsafe_allow_html=True)
-
-    # Quick reference
-    st.markdown("### 🗒️ Quick Reference")
-    st.markdown("""
-<div class='info-card'>
-  <h4>UCI Notation Examples</h4>
-  <p>
-  <code>e2e4</code> → Pawn e2 to e4<br>
-  <code>g1f3</code> → Knight to f3<br>
-  <code>e1g1</code> → Castle kingside<br>
-  <code>e7e8q</code> → Pawn promotes to Queen
-  </p>
-</div>
-""", unsafe_allow_html=True)
+        st.markdown("<div class='move-history' style='color:var(--muted); text-align:center; font-style:italic; padding-top:20px;'>Awaiting first execution...</div>", unsafe_allow_html=True)

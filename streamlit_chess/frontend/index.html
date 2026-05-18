@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <style>
+      body { margin: 0; padding: 0; overflow: hidden; background-color: transparent; }
+      #board { width: 500px; margin: auto; }
+      
+      /* Cyberpunk Theme Override */
+      .white-1e1d7 { background-color: #d3d3f5; color: #4a4a75; }
+      .black-3c85d { background-color: #4a4a75; color: #d3d3f5; }
+      
+      .highlight-legal {
+        box-shadow: inset 0 0 10px 2px #00f3ff !important;
+        background-color: rgba(0, 243, 255, 0.4) !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="board"></div>
+    <script>
+      function sendMessageToStreamlit(type, data) {
+        window.parent.postMessage({
+          isStreamlitMessage: true,
+          type: type,
+          ...data
+        }, "*");
+      }
+
+      function init() {
+        sendMessageToStreamlit("streamlit:componentReady", {apiVersion: 1});
+      }
+
+      function setFrameHeight(height) {
+        sendMessageToStreamlit("streamlit:setFrameHeight", {height: height});
+      }
+
+      let board = null;
+      let legalMoves = {};
+
+      function highlightSquare(square) {
+        let $square = $('#board .square-' + square);
+        $square.addClass('highlight-legal');
+      }
+
+      function clearHighlights() {
+        $('#board .square-55d63').removeClass('highlight-legal');
+      }
+
+      window.addEventListener("message", function(event) {
+        if (event.data.type === "streamlit:render") {
+          const args = event.data.args;
+          legalMoves = args.legal_moves || {};
+          
+          if (!board) {
+            board = Chessboard('board', {
+              draggable: true,
+              position: args.fen,
+              orientation: args.board_flipped ? 'black' : 'white',
+              pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
+              onMouseoverSquare: function(square, piece) {
+                let moves = legalMoves[square];
+                if (!moves || moves.length === 0) return;
+                highlightSquare(square);
+                moves.forEach(dst => highlightSquare(dst));
+              },
+              onMouseoutSquare: function(square, piece) {
+                clearHighlights();
+              },
+              onDrop: function(source, target) {
+                clearHighlights();
+                if (source !== target) {
+                  sendMessageToStreamlit("streamlit:setComponentValue", {
+                    value: {source: source, target: target, timestamp: Date.now()}
+                  });
+                } else {
+                  return 'snapback';
+                }
+              }
+            });
+            setFrameHeight(520);
+          } else {
+            board.position(args.fen, false);
+            board.orientation(args.board_flipped ? 'black' : 'white');
+          }
+        }
+      });
+
+      init();
+    </script>
+  </body>
+</html>
