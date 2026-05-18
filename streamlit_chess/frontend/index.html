@@ -7,7 +7,7 @@
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
     <style>
       body { margin: 0; padding: 0; overflow: hidden; background-color: transparent; }
-      #board { width: 600px; margin: auto; }
+      #board { width: 700px; margin: auto; }
       
       /* Cyberpunk Theme Override */
       .white-1e1d7 { background-color: #d3d3f5; color: #4a4a75; }
@@ -101,7 +101,7 @@
                 }
               }
             });
-            setFrameHeight(680);
+            setFrameHeight(780);
           } else {
             board.position(args.fen, false);
             board.orientation(args.board_flipped ? 'black' : 'white');
