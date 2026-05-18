@@ -7,7 +7,7 @@
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
     <style>
       body { margin: 0; padding: 0; overflow: hidden; background-color: transparent; }
-      #board { width: 500px; margin: auto; }
+      #board { width: 600px; margin: auto; }
       
       /* Cyberpunk Theme Override */
       .white-1e1d7 { background-color: #d3d3f5; color: #4a4a75; }
@@ -17,10 +17,30 @@
         box-shadow: inset 0 0 10px 2px #00f3ff !important;
         background-color: rgba(0, 243, 255, 0.4) !important;
       }
+      
+      .board-wrap {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: radial-gradient(circle, #111122 0%, #090914 100%);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 25px;
+        box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        transition: all 0.3s;
+        margin: auto;
+        width: fit-content;
+      }
+      .board-wrap:hover {
+        border-color: #bc13fe;
+        box-shadow: 0 0 40px rgba(188, 19, 254, 0.2);
+      }
     </style>
   </head>
   <body>
-    <div id="board"></div>
+    <div class="board-wrap">
+      <div id="board"></div>
+    </div>
     <script>
       function sendMessageToStreamlit(type, data) {
         window.parent.postMessage({
@@ -81,7 +101,7 @@
                 }
               }
             });
-            setFrameHeight(520);
+            setFrameHeight(680);
           } else {
             board.position(args.fen, false);
             board.orientation(args.board_flipped ? 'black' : 'white');

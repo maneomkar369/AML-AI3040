@@ -218,22 +218,7 @@ html, body, [class*="css"] {
     color: var(--neon-blue) !important;
 }
 
-/* Board container */
-.board-wrap {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: radial-gradient(circle, var(--dark3) 0%, var(--dark2) 100%);
-    border: 2px solid var(--border);
-    border-radius: 16px;
-    padding: 25px;
-    box-shadow: 0 0 30px rgba(0,0,0,0.8);
-    transition: all 0.3s;
-}
-.board-wrap:hover {
-    border-color: var(--neon-purple);
-    box-shadow: 0 0 40px rgba(188, 19, 254, 0.2);
-}
+
 
 /* Text input */
 .stTextInput input {
@@ -551,10 +536,7 @@ with col_board:
                 legal_moves_dict[src] = []
             legal_moves_dict[src].append(dst)
 
-    st.markdown("<div class='board-wrap'>", unsafe_allow_html=True)
     move_val = st_chess(board.fen(), legal_moves=legal_moves_dict, board_flipped=board_flipped, key="cyber_chess_board")
-    st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
 
     if not st.session_state.game_over and board.turn == st.session_state.player_color:
         if move_val is not None:
